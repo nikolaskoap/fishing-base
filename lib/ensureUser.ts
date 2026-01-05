@@ -59,8 +59,15 @@ export async function ensureUser(
     }
 
     if (Object.keys(healPayload).length > 0) {
+        console.log(`🔧 [ENSURE_USER] Healing user ${fid}, adding missing fields:`, Object.keys(healPayload))
+        if (healPayload.spinTickets) {
+            console.log(`🎰 [ENSURE_USER] HEALING spinTickets! Setting to: ${healPayload.spinTickets}`)
+        }
         await redis.hset(userKey, healPayload)
         user = { ...user!, ...healPayload }
+        console.log(`✅ [ENSURE_USER] User ${fid} healed successfully`)
+    } else {
+        console.log(`✅ [ENSURE_USER] User ${fid} already has all required fields (no healing needed)`)
     }
 
     // 5. WALLET BINDING (SET SEKALI SAJA)

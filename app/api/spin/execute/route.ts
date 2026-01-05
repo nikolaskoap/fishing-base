@@ -22,16 +22,35 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'USER_DATA_NOT_FOUND' }, { status: 500 })
         }
 
+        // 🔍 CRITICAL DEBUG: Log exact userData state
+        console.log('🎰 [SPIN DEBUG] ensureUser returned userData:', {
+            fid,
+            spinTickets: userData.spinTickets,
+            spinTickets_type: typeof userData.spinTickets,
+            lastDailySpin: userData.lastDailySpin,
+            allKeys: Object.keys(userData),
+            hasSpinTickets: 'spinTickets' in userData
+        })
+
         const userKey = `user:${fid}`
 
         // 3. Check Tickets First (Fix: Check BEFORE decrement)
         const currentTickets = Number(userData.spinTickets || 0)
+
+        console.log('🎰 [SPIN DEBUG] Ticket validation:', {
+            userData_spinTickets: userData.spinTickets,
+            currentTickets,
+            will_error: currentTickets <= 0
+        })
+
         if (currentTickets <= 0) {
+            console.error('❌ [SPIN DEBUG] NO_TICKETS ERROR! userData:', JSON.stringify(userData, null, 2))
             return NextResponse.json({ error: 'NO_TICKETS' }, { status: 400 })
         }
 
         // 4. Ticket Burn (Atomic - only after validation)
         const tickets = await redis.hincrby(userKey, 'spinTickets', -1)
+        console.log('✅ [SPIN DEBUG] Ticket burned successfully. Remaining tickets:', tickets)
 
         // 5. Weighted RNG (99% 1 Fish Rule)
         const roll = crypto.randomInt(0, 10000) // 0 - 9999
