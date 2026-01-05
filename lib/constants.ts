@@ -7,9 +7,9 @@ export const BOAT_CONFIG: Record<BoatTier, {
   catchingRate: number
   fishPerHour: number
 }> = {
-  SMALL: { price: 10, catchingRate: 0.75, fishPerHour: 10 },   // Was 0.50, now 75% base
-  MEDIUM: { price: 20, catchingRate: 0.85, fishPerHour: 25 },  // Was 0.60, now 85% base
-  LARGE: { price: 50, catchingRate: 0.95, fishPerHour: 60 },   // Was 0.75, now 95% base
+  SMALL: { price: 10, catchingRate: 0.85, fishPerHour: 10 },   // Was 0.75, now 85% base (feels rewarding)
+  MEDIUM: { price: 20, catchingRate: 0.92, fishPerHour: 25 },  // Was 0.85, now 92% base
+  LARGE: { price: 50, catchingRate: 0.98, fishPerHour: 60 },   // Was 0.95, now 98% base (premium feel)
 };
 
 export const BOAT_TIER_MAP: Record<number, BoatTier> = {
@@ -26,7 +26,7 @@ export const DIFFICULTY_CONFIG = {
 
 export const GLOBAL_CONFIG = {
   DAILY_CATCH_CAP: 500,
-  MIN_CAST_INTERVAL: 4000, // 4 seconds
+  MIN_CAST_INTERVAL: 3000, // Was 4000ms (4s), now 3000ms (3s) to allow frontend 3.5s interval
   REFERRAL_MIN_CASTS: 50,
   REFERRAL_REWARD_USDC: 1,
 }

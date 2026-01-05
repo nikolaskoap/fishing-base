@@ -51,6 +51,26 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        // Daily Ticket Refresh (Auto-replenish free daily spin)
+        const lastDailySpin = Number(userData.lastDailySpin ?? 0)
+        const timeSinceLastDaily = now - lastDailySpin
+
+        if (timeSinceLastDaily >= 86400000) { // 24 hours in ms
+            const currentTickets = Number(userData.spinTickets || 0)
+
+            // Only give 1 free ticket if they don't have any
+            // This prevents multi-day stacking exploits
+            if (currentTickets === 0) {
+                await redis.hset(`user:${fid}`, {
+                    spinTickets: "1",
+                    lastDailySpin: now.toString()
+                })
+                userData.spinTickets = "1"
+                userData.lastDailySpin = now.toString()
+                console.log(`✅ Daily ticket refreshed for user ${fid}`)
+            }
+        }
+
         return NextResponse.json({
             ...userData,
             invitees: invitees || [],

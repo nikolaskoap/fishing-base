@@ -285,9 +285,33 @@ export default function MainGameScreen() {
           label: "CAP REACHED",
           subLabel: "Wait for the next hour"
         })
+      } else if (result.error === "CAST_TOO_FAST") {
+        // Rate limited - show subtle notification
+        setCatchNotification({
+          rarity: 'JUNK',
+          value: 0,
+          label: "TOO FAST!",
+          subLabel: "Slow down a bit"
+        })
+      } else if (result.error) {
+        // Other errors - show generic message
+        console.error("Mining error:", result.error)
+        setCatchNotification({
+          rarity: 'JUNK',
+          value: 0,
+          label: "ERROR",
+          subLabel: result.error
+        })
       }
     } catch (e) {
       console.error("Mining error in PAID mode", e)
+      // Show error popup instead of silent failure
+      setCatchNotification({
+        rarity: 'JUNK',
+        value: 0,
+        label: "NETWORK ERROR",
+        subLabel: "Check connection"
+      })
     }
   }, [fid, announceOn, activeBoatLevel, userId, address])
 
