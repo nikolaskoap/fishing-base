@@ -12,7 +12,20 @@ interface FreeModeScreenProps {
 
 export default function FreeModeScreen({ onPurchaseBoat }: FreeModeScreenProps) {
     const { context } = useFrame()
-    const fid = context?.user.fid
+
+    // 🔧 CRITICAL FIX: Add fallback FID for testing/development
+    const contextFid = context?.user.fid
+    const mockFidString = typeof window !== 'undefined' ? localStorage.getItem('mockFid') || '999999' : '999999'
+    const mockFid = parseInt(mockFidString, 10)
+    const fid = contextFid || mockFid
+
+    // Store mock FID for consistency
+    useEffect(() => {
+        if (!contextFid && typeof window !== 'undefined') {
+            localStorage.setItem('mockFid', mockFid.toString())
+            console.log('🔧 [DEV] FreeModeScreen using mock FID:', mockFid)
+        }
+    }, [contextFid, mockFid])
 
     const [isSpinOpen, setIsSpinOpen] = useState(false)
     const [isInviteOpen, setIsInviteOpen] = useState(false)

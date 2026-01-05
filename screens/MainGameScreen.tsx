@@ -27,7 +27,22 @@ import { swapService } from '@/services/swap.service';
 export default function MainGameScreen() {
   const { context } = useFrame()
   const { address } = useAccount()
-  const fid = context?.user.fid
+
+  // 🔧 CRITICAL FIX: Add fallback FID for testing/development
+  // When Farcaster context is not available (e.g., in iframe, localhost, or Free Mode),
+  // use a mock FID stored in localStorage or generate one
+  const contextFid = context?.user.fid
+  const mockFidString = typeof window !== 'undefined' ? localStorage.getItem('mockFid') || '999999' : '999999'
+  const mockFid = parseInt(mockFidString, 10)
+  const fid = contextFid || mockFid
+
+  // Store mock FID for consistency
+  useEffect(() => {
+    if (!contextFid && typeof window !== 'undefined') {
+      localStorage.setItem('mockFid', mockFid.toString())
+      console.log('🔧 [DEV] Using mock FID for testing:', mockFid)
+    }
+  }, [contextFid, mockFid])
 
   // Mining & Boat State
   const [minedFish, setMinedFish] = useState(0)
