@@ -36,6 +36,10 @@ export async function ensureUser(
         minedFish: '0',
         xp: '0',
 
+        // spin system (CRITICAL: Must be initialized!)
+        spinTickets: '1',         // Everyone starts with 1 free ticket
+        lastDailySpin: '0',       // Timestamp of last daily spin claim
+
         createdAt: Date.now().toString()
     }
 

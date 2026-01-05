@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
 
         if (userData.mode !== "PAID_USER") {
-            return NextResponse.json({ error: 'MINING_LOCK_FREE_MODE' }, { status: 403 })
+            return NextResponse.json({ status: 'ERROR', error: 'MINING_LOCK_FREE_MODE' }, { status: 403 })
         }
 
         // 3. Rate Limiting Check
@@ -94,13 +94,13 @@ export async function POST(req: NextRequest) {
         // 6. Caps Check (Hourly & Daily)
         const hourlyCatches = Number(userData.hourlyCatches ?? 0)
         if (hourlyCatches >= config.fishPerHour) {
-            return NextResponse.json({ error: 'HOURLY_CAP_REACHED' }, { status: 429 })
+            return NextResponse.json({ status: 'CAP_REACHED', error: 'HOURLY_CAP_REACHED' }, { status: 429 })
         }
 
         const todayKey = `daily_cap:${fid}:${new Date().toISOString().split('T')[0]}`
         const dailyCatches = Number(await redis.get(todayKey) ?? 0)
         if (dailyCatches >= GLOBAL_CONFIG.DAILY_CATCH_CAP) {
-            return NextResponse.json({ error: 'DAILY_CAP_REACHED' }, { status: 429 })
+            return NextResponse.json({ status: 'CAP_REACHED', error: 'DAILY_CAP_REACHED' }, { status: 429 })
         }
 
         // 7. Calculate Final Success Rate with Player Boost
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
         const cursor = Number(userData.currentIndex ?? 0)
 
         if (cursor >= bucket.length || bucket.length === 0) {
-            return NextResponse.json({ error: 'BUCKET_EXHAUSTED' }, { status: 410 })
+            return NextResponse.json({ status: 'ERROR', error: 'BUCKET_EXHAUSTED', message: 'Please refresh the page to get a new bucket' }, { status: 410 })
         }
 
         const fishType = bucket[cursor]

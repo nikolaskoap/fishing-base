@@ -205,10 +205,14 @@ export default function MainGameScreen() {
     loadUserData()
   }, [fid, address])
 
-  // Clear notification after 3 seconds
+  // Clear notification after 5 seconds (extended for visibility)
   useEffect(() => {
     if (catchNotification) {
-      const timer = setTimeout(() => setCatchNotification(null), 3000)
+      console.log('🎯 [POP-UP] Pop-up now visible:', catchNotification)
+      const timer = setTimeout(() => {
+        console.log('🎯 [POP-UP] Clearing pop-up after 5s')
+        setCatchNotification(null)
+      }, 5000)
       return () => clearTimeout(timer)
     }
   }, [catchNotification])
@@ -238,28 +242,38 @@ export default function MainGameScreen() {
   }, [fid, address, spinTickets, lastDailySpin, referralCount])
 
   const handleCatch = useCallback(async (catchData: FishCatch) => {
-    if (!fid) return
+    if (!fid) {
+      console.error('🐛 [CAST DEBUG] No FID available, aborting')
+      return
+    }
 
     console.log('🐛 [CAST DEBUG] Starting cast attempt:', { activeBoatLevel, fid, userId, wallet: address })
 
     // PRACTICE MODE / FREE MODE: Show local UI feedback only
     if (activeBoatLevel === 0) {
       console.log('⚠️ [CAST DEBUG] In FREE MODE - showing local feedback only')
-      setCatchNotification({
+      const notification = {
         rarity: catchData.rarity,
         value: 0
-      })
+      }
+      console.log('🎯 [POP-UP] Setting FREE MODE notification:', notification)
+      setCatchNotification(notification)
       return
     }
 
     try {
-      // 1. Call real server-side cast with wallet (FIX: Added wallet parameter)
+      // 1. Call real server-side cast with wallet
+      console.log('📡 [API] Calling /api/mining/cast...')
       const result = await miningService.cast(userId || fid.toString(), address)
 
-      console.log('🐛 [CAST DEBUG] API Response:', JSON.stringify(result, null, 2))
+      console.log('📡 [API] Response received:', JSON.stringify(result, null, 2))
+      console.log('📡 [API] Response status field:', result.status)
+      console.log('📡 [API] Response error field:', result.error)
 
       if (result.status === "SUCCESS") {
-        // 2. Update all stats immediately based on server response (nested structure)
+        console.log('✅ [CAST DEBUG] SUCCESS - Updating stats and showing pop-up')
+
+        // 2. Update all stats immediately based on server response
         setMinedFish(result.stats.minedFish)
         setXp(result.stats.xp)
         setBucketIndex(result.stats.currentIndex)
@@ -269,72 +283,111 @@ export default function MainGameScreen() {
         xpRef.current = result.stats.xp
 
         if (announceOn) {
-          console.log(`[PAID MODE] Caught ${result.fish.type}! +${result.fish.value} fish`)
+          console.log(`✅ [PAID MODE] Caught ${result.fish.type}! +${result.fish.value} fish`)
         }
 
         // 3. Show catch notification popup
-        setCatchNotification({
+        const notification = {
           rarity: result.fish.type as FishRarity,
           value: result.fish.value
-        })
-      } else if (result.status === "SESSION_EXPIRED") {
-        setIsAutoCastActive(false)
-        alert("Session expired. Please restart Auto-Cast.")
+        }
+        console.log('🎯 [POP-UP] Setting SUCCESS notification:', notification)
+        setCatchNotification(notification)
+
       } else if (result.status === "MISS") {
+        console.log('❌ [CAST DEBUG] MISS - Updating XP and showing miss pop-up')
+
         // Update XP from server response (even on MISS)
         if (result.stats?.xp) {
           setXp(result.stats.xp)
           xpRef.current = result.stats.xp
         }
 
-        setCatchNotification({
-          rarity: 'JUNK',
+        const notification = {
+          rarity: 'JUNK' as FishRarity,
           value: 0,
           label: "MISS!",
           subLabel: "+2 XP - Keep trying!"
-        })
+        }
+        console.log('🎯 [POP-UP] Setting MISS notification:', notification)
+        setCatchNotification(notification)
+
       } else if (result.status === "CAP_REACHED") {
-        setCatchNotification({
-          rarity: 'JUNK',
+        console.log('🚫 [CAST DEBUG] CAP_REACHED - Showing cap pop-up')
+
+        const notification = {
+          rarity: 'JUNK' as FishRarity,
           value: 0,
           label: "CAP REACHED",
-          subLabel: "Wait for the next hour"
-        })
+          subLabel: result.error === 'HOURLY_CAP_REACHED' ? 'Wait for next hour' : 'Daily limit reached'
+        }
+        console.log('🎯 [POP-UP] Setting CAP notification:', notification)
+        setCatchNotification(notification)
+
+      } else if (result.status === "ERROR") {
+        console.log('⚠️ [CAST DEBUG] API returned ERROR status')
+
+        const notification = {
+          rarity: 'JUNK' as FishRarity,
+          value: 0,
+          label: "ERROR",
+          subLabel: result.error || result.message || 'Unknown error'
+        }
+        console.log('🎯 [POP-UP] Setting ERROR notification:', notification)
+        setCatchNotification(notification)
+
       } else if (result.error === "CAST_TOO_FAST") {
-        console.log('⏱️ [CAST DEBUG] Rate limited')
-        setCatchNotification({
-          rarity: 'JUNK',
+        console.log('⏱️ [CAST DEBUG] Rate limited - CAST_TOO_FAST')
+
+        const notification = {
+          rarity: 'JUNK' as FishRarity,
           value: 0,
           label: "TOO FAST!",
           subLabel: "Slow down a bit"
-        })
+        }
+        console.log('🎯 [POP-UP] Setting RATE_LIMIT notification:', notification)
+        setCatchNotification(notification)
+
       } else if (result.error) {
-        console.error('❌ [CAST DEBUG] API Error:', result.error)
-        setCatchNotification({
-          rarity: 'JUNK',
+        console.error('❌ [CAST DEBUG] API Error (no status field):', result.error)
+
+        const notification = {
+          rarity: 'JUNK' as FishRarity,
           value: 0,
           label: "ERROR",
           subLabel: result.error
-        })
+        }
+        console.log('🎯 [POP-UP] Setting generic ERROR notification:', notification)
+        setCatchNotification(notification)
+
       } else {
-        // UNEXPECTED RESPONSE FORMAT - Debug this!
+        // UNEXPECTED RESPONSE FORMAT
         console.error('⚠️ [CAST DEBUG] UNEXPECTED RESPONSE FORMAT:', result)
-        setCatchNotification({
-          rarity: 'JUNK',
+        console.error('⚠️ [CAST DEBUG] Keys in response:', Object.keys(result))
+
+        const notification = {
+          rarity: 'JUNK' as FishRarity,
           value: 0,
           label: "DEBUG",
           subLabel: "Check console"
-        })
+        }
+        console.log('🎯 [POP-UP] Setting DEBUG notification:', notification)
+        setCatchNotification(notification)
       }
     } catch (e: any) {
-      console.error('💥 [CAST DEBUG] Exception in PAID mode:', e)
-      console.error('💥 [CAST DEBUG] Error details:', e.message, e.stack)
-      setCatchNotification({
-        rarity: 'JUNK',
+      console.error('💥 [CAST DEBUG] Exception caught in handleCatch:', e)
+      console.error('💥 [CAST DEBUG] Error type:', e.constructor.name)
+      console.error('💥 [CAST DEBUG] Error message:', e.message)
+      console.error('💥 [CAST DEBUG] Stack trace:', e.stack)
+
+      const notification = {
+        rarity: 'JUNK' as FishRarity,
         value: 0,
         label: "NETWORK ERROR",
-        subLabel: "Check console"
-      })
+        subLabel: e.message || "Check console"
+      }
+      console.log('🎯 [POP-UP] Setting NETWORK_ERROR notification:', notification)
+      setCatchNotification(notification)
     }
   }, [fid, announceOn, activeBoatLevel, userId, address])
 
