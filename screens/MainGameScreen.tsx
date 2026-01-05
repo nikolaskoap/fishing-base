@@ -187,6 +187,16 @@ export default function MainGameScreen() {
 
           setMinedFish(savedFish)
           setCanFishBalance(savedCanFish)
+
+          // DEBUG: Log user state to verify everything loaded correctly
+          console.log('🐛 [USER STATE] Loaded user data:', {
+            activeBoatLevel: savedBoat,
+            mode: data.mode,
+            wallet: address,
+            fishCap: config?.fishPerHour || 0,
+            spinTickets: savedTickets,
+            minedFish: savedFish
+          })
         }
       } catch (e) {
         console.error("Load error", e)
@@ -230,8 +240,11 @@ export default function MainGameScreen() {
   const handleCatch = useCallback(async (catchData: FishCatch) => {
     if (!fid) return
 
+    console.log('🐛 [CAST DEBUG] Starting cast attempt:', { activeBoatLevel, fid, userId, wallet: address })
+
     // PRACTICE MODE / FREE MODE: Show local UI feedback only
     if (activeBoatLevel === 0) {
+      console.log('⚠️ [CAST DEBUG] In FREE MODE - showing local feedback only')
       setCatchNotification({
         rarity: catchData.rarity,
         value: 0
@@ -240,8 +253,10 @@ export default function MainGameScreen() {
     }
 
     try {
-      // 1. Call real server-side cast with wallet
-      const result = await miningService.cast(userId || fid.toString())
+      // 1. Call real server-side cast with wallet (FIX: Added wallet parameter)
+      const result = await miningService.cast(userId || fid.toString(), address)
+
+      console.log('🐛 [CAST DEBUG] API Response:', JSON.stringify(result, null, 2))
 
       if (result.status === "SUCCESS") {
         // 2. Update all stats immediately based on server response (nested structure)
@@ -286,7 +301,7 @@ export default function MainGameScreen() {
           subLabel: "Wait for the next hour"
         })
       } else if (result.error === "CAST_TOO_FAST") {
-        // Rate limited - show subtle notification
+        console.log('⏱️ [CAST DEBUG] Rate limited')
         setCatchNotification({
           rarity: 'JUNK',
           value: 0,
@@ -294,23 +309,31 @@ export default function MainGameScreen() {
           subLabel: "Slow down a bit"
         })
       } else if (result.error) {
-        // Other errors - show generic message
-        console.error("Mining error:", result.error)
+        console.error('❌ [CAST DEBUG] API Error:', result.error)
         setCatchNotification({
           rarity: 'JUNK',
           value: 0,
           label: "ERROR",
           subLabel: result.error
         })
+      } else {
+        // UNEXPECTED RESPONSE FORMAT - Debug this!
+        console.error('⚠️ [CAST DEBUG] UNEXPECTED RESPONSE FORMAT:', result)
+        setCatchNotification({
+          rarity: 'JUNK',
+          value: 0,
+          label: "DEBUG",
+          subLabel: "Check console"
+        })
       }
-    } catch (e) {
-      console.error("Mining error in PAID mode", e)
-      // Show error popup instead of silent failure
+    } catch (e: any) {
+      console.error('💥 [CAST DEBUG] Exception in PAID mode:', e)
+      console.error('💥 [CAST DEBUG] Error details:', e.message, e.stack)
       setCatchNotification({
         rarity: 'JUNK',
         value: 0,
         label: "NETWORK ERROR",
-        subLabel: "Check connection"
+        subLabel: "Check console"
       })
     }
   }, [fid, announceOn, activeBoatLevel, userId, address])
