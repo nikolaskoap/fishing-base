@@ -55,20 +55,20 @@ export async function GET(req: NextRequest) {
         const lastDailySpin = Number(userData.lastDailySpin ?? 0)
         const timeSinceLastDaily = now - lastDailySpin
 
+        // Give 1 free ticket every 24 hours (regardless of current ticket count)
+        // Update lastDailySpin to prevent double-claiming
         if (timeSinceLastDaily >= 86400000) { // 24 hours in ms
             const currentTickets = Number(userData.spinTickets || 0)
 
-            // Only give 1 free ticket if they don't have any
-            // This prevents multi-day stacking exploits
-            if (currentTickets === 0) {
-                await redis.hset(`user:${fid}`, {
-                    spinTickets: "1",
-                    lastDailySpin: now.toString()
-                })
-                userData.spinTickets = "1"
-                userData.lastDailySpin = now.toString()
-                console.log(`✅ Daily ticket refreshed for user ${fid}`)
-            }
+            // Always give 1 ticket and update lastDailySpin timestamp
+            // This ensures daily refresh works even if user saved tickets
+            await redis.hset(`user:${fid}`, {
+                spinTickets: String(currentTickets + 1),
+                lastDailySpin: now.toString()
+            })
+            userData.spinTickets = String(currentTickets + 1)
+            userData.lastDailySpin = now.toString()
+            console.log(`✅ Daily ticket refreshed for user ${fid}, tickets: ${currentTickets} → ${currentTickets + 1}`)
         }
 
         return NextResponse.json({
